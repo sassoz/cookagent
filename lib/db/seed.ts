@@ -74,6 +74,14 @@ const developmentSeedRecipes: Recipe[] = [
       cookedSessions: [{ date: '2026-04-11T18:30:00.000Z', notes: 'Used more lemon.', rating: 4 }],
       statusTags: ['standard rotation'],
     },
+    image: {
+      url: '/red-lentil-soup.png',
+      storageKey: null,
+      altText: 'Red lentil soup in a white bowl',
+      width: 1024,
+      height: 1024,
+      mimeType: 'image/png',
+    },
   }),
   buildSeedRecipe({
     id: 'dev-sheet-pan-gnocchi',
@@ -104,6 +112,14 @@ const developmentSeedRecipes: Recipe[] = [
       comments: [],
       cookedSessions: [{ date: '2026-03-27T19:00:00.000Z', notes: null, rating: 5 }],
       statusTags: ['kid-friendly', 'good for crowd'],
+    },
+    image: {
+      url: '/sheet-pan-gnocchi.png',
+      storageKey: null,
+      altText: 'Sheet-pan gnocchi with peppers and chickpeas',
+      width: 1024,
+      height: 1024,
+      mimeType: 'image/png',
     },
   }),
   buildSeedRecipe({
@@ -137,6 +153,14 @@ const developmentSeedRecipes: Recipe[] = [
       cookedSessions: [],
       statusTags: ['to try', 'quick overnight', 'good for crowd'],
     },
+    image: {
+      url: '/overnight-focaccia.png',
+      storageKey: null,
+      altText: 'Golden overnight focaccia with rosemary',
+      width: 1024,
+      height: 1024,
+      mimeType: 'image/png',
+    },
   }),
 ];
 
@@ -151,6 +175,14 @@ export async function seedDevelopmentRecipes(): Promise<void> {
 
       if (existingRecipe === undefined) {
         await saveRecipe(recipe);
+        return;
+      }
+
+      if (existingRecipe.image.url === null && recipe.image.url !== null) {
+        await saveRecipe({
+          ...existingRecipe,
+          image: recipe.image,
+        });
       }
     }),
   );

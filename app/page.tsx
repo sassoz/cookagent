@@ -3,8 +3,8 @@ import { RecipeDashboard } from '@/components/recipe-dashboard';
 export default function HomePage() {
   return (
     <RecipeDashboard
-      heading="Recipe dashboard"
-      intro="Browse locally stored recipes, check what is in rotation, and filter quickly from a phone in the kitchen."
+      heading="Cookagent"
+      intro="Capture recipes from notes, screenshots, and clippings. Review the structured draft, save locally, and cook offline."
     />
   );
 }
