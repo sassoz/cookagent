@@ -6,10 +6,32 @@
   color-scheme: light;
 }
 
+html {
+  background:
+    radial-gradient(circle at top, rgba(251, 191, 36, 0.14), transparent 28%),
+    linear-gradient(180deg, #f8fafc 0%, #f7f5f2 100%);
+}
+
 body {
-  @apply bg-canvas text-ink antialiased;
+  @apply min-h-screen bg-transparent text-ink antialiased;
 }
 
 main {
   @apply mx-auto w-full max-w-5xl px-4 pb-24 pt-6 sm:px-6 lg:px-8;
+}
+
+::selection {
+  background: rgba(20, 83, 45, 0.18);
+}
+
+@media print {
+  html,
+  body {
+    background: #ffffff;
+  }
+
+  main {
+    max-width: none;
+    padding: 0;
+  }
 }

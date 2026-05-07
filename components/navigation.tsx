@@ -13,6 +13,10 @@ const links = [
 export function Navigation() {
   const pathname = usePathname();
 
+  if (pathname.endsWith('/print')) {
+    return null;
+  }
+
   return (
     <>
       <nav className="hidden border-b bg-white sm:block">

@@ -1,11 +1,10 @@
+import { RecipeDashboard } from '@/components/recipe-dashboard';
+
 export default function HomePage() {
   return (
-    <section className="space-y-4">
-      <h1 className="text-2xl font-semibold">Cookagent</h1>
-      <p className="text-sm text-gray-700 sm:text-base">
-        Personal AI-powered recipe management, built mobile-first. This foundation includes core routes,
-        responsive navigation, and PWA setup.
-      </p>
-    </section>
+    <RecipeDashboard
+      heading="Recipe dashboard"
+      intro="Browse locally stored recipes, check what is in rotation, and filter quickly from a phone in the kitchen."
+    />
   );
 }
