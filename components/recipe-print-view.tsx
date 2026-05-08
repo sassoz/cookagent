@@ -13,6 +13,7 @@ import {
   groupIngredients,
   groupSteps,
 } from '@/lib/recipe/display';
+import { getRecipeMarkdownSections } from '@/lib/recipe/markdownSections';
 import type { Recipe } from '@/lib/recipe/schema';
 
 interface RecipePrintViewProps {
@@ -74,6 +75,7 @@ export function RecipePrintView({ id }: RecipePrintViewProps) {
   const stepGroups = groupSteps(recipe.steps);
   const tags = getRecipeTags(recipe);
   const showStepIndex = stepGroups.length > 1 || recipe.steps.length >= 6;
+  const markdownSections = getRecipeMarkdownSections(recipe);
 
   return (
     <article className="mx-auto max-w-4xl bg-white px-5 py-8 text-stone-950 sm:px-10 print:max-w-none print:px-0 print:py-0">
@@ -172,6 +174,20 @@ export function RecipePrintView({ id }: RecipePrintViewProps) {
               <li key={note}>{note}</li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {markdownSections.length === 0 ? null : (
+        <section className="mt-10 border-t border-stone-200 pt-6">
+          <h2 className="text-3xl font-semibold">Original text</h2>
+          <div className="mt-4 space-y-6">
+            {markdownSections.map((section) => (
+              <section key={section.title} className="break-inside-avoid">
+                <h3 className="text-lg font-semibold uppercase text-stone-600">{section.title}</h3>
+                <div className="mt-2 whitespace-pre-wrap font-sans text-base leading-7 text-stone-800">{section.text}</div>
+              </section>
+            ))}
+          </div>
         </section>
       )}
     </article>

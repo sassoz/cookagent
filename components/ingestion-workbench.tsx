@@ -5,9 +5,13 @@ import { useEffect, useState } from 'react';
 
 import { ReviewDraft } from '@/components/review-draft';
 import { imageFileFromClipboard } from '@/lib/browser/clipboardImage';
+import { listRecipes } from '@/lib/db/repositories';
+import { seedDevelopmentRecipes } from '@/lib/db/seed';
+import { ingestAuthHeaders, readStoredIngestToken } from '@/lib/ingest/auth';
 import { recipeSchema, type Recipe } from '@/lib/recipe/schema';
 
 type IngestionTab = 'paste' | 'image' | 'url';
+type SourceType = Recipe['source']['type'];
 type ExtractionStatus = 'idle' | 'ready' | 'extracting' | 'draft-ready';
 
 interface TemporaryImage {
@@ -16,6 +20,13 @@ interface TemporaryImage {
 }
 
 const acceptedImageTypes = 'image/png,image/jpeg,image/webp,image/heic,image/heif';
+const ingestSourceTypeValues: SourceType[] = ['pasted-text', 'image', 'url', 'book', 'import'];
+
+function nullableTrimmedText(value: string): string | null {
+  const trimmed = value.trim();
+
+  return trimmed.length === 0 ? null : trimmed;
+}
 
 function statusText(status: ExtractionStatus): string {
   switch (status) {
@@ -51,12 +62,17 @@ export function IngestionWorkbench() {
   const [activeTab, setActiveTab] = useState<IngestionTab>('paste');
   const [recipeText, setRecipeText] = useState('');
   const [recipeUrl, setRecipeUrl] = useState('');
+  const [sourceType, setSourceType] = useState<SourceType>('pasted-text');
+  const [sourceName, setSourceName] = useState('');
+  const [sourceAuthor, setSourceAuthor] = useState('');
+  const [bookSuggestions, setBookSuggestions] = useState<string[]>([]);
   const [temporaryImage, setTemporaryImage] = useState<TemporaryImage | null>(null);
   const [saveImageAsRecipePhoto, setSaveImageAsRecipePhoto] = useState(false);
   const [status, setStatus] = useState<ExtractionStatus>('idle');
   const [draftRecipe, setDraftRecipe] = useState<Recipe | null>(null);
   const [extractError, setExtractError] = useState<string | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [hasIngestToken, setHasIngestToken] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -65,6 +81,43 @@ export function IngestionWorkbench() {
       }
     };
   }, [temporaryImage]);
+
+  useEffect(() => {
+    setHasIngestToken(readStoredIngestToken().length > 0);
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadBookSuggestions() {
+      try {
+        await seedDevelopmentRecipes();
+        const recipes = await listRecipes();
+        const books = Array.from(
+          new Set(
+            recipes
+              .filter((recipe) => recipe.source.type === 'book' && recipe.source.name !== null)
+              .map((recipe) => recipe.source.name?.trim() ?? '')
+              .filter((bookName) => bookName.length > 0),
+          ),
+        ).sort((a, b) => a.localeCompare(b));
+
+        if (isMounted) {
+          setBookSuggestions(books);
+        }
+      } catch {
+        if (isMounted) {
+          setBookSuggestions([]);
+        }
+      }
+    }
+
+    void loadBookSuggestions();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (status !== 'extracting') {
@@ -81,9 +134,15 @@ export function IngestionWorkbench() {
   }, [status]);
 
   const canExtract =
-    (activeTab === 'paste' && recipeText.trim().length > 0) ||
-    (activeTab === 'url' && recipeUrl.trim().length > 0) ||
-    (activeTab === 'image' && temporaryImage !== null);
+    hasIngestToken &&
+    ((activeTab === 'paste' && recipeText.trim().length > 0) ||
+      (activeTab === 'url' && recipeUrl.trim().length > 0) ||
+      (activeTab === 'image' && temporaryImage !== null));
+
+  function selectTab(tab: IngestionTab) {
+    setActiveTab(tab);
+    setSourceType(tab === 'paste' ? 'pasted-text' : tab);
+  }
 
   function handleImagePaste(event: React.ClipboardEvent) {
     const file = imageFileFromClipboard(event);
@@ -149,9 +208,12 @@ export function IngestionWorkbench() {
 
     try {
       const selectedImageDataUrl = temporaryImage === null ? null : await fileToDataUrl(temporaryImage.file);
+      const trimmedSourceName = nullableTrimmedText(sourceName);
+      const trimmedSourceAuthor = nullableTrimmedText(sourceAuthor);
       const response = await fetch('/api/llm/extract', {
         method: 'POST',
         headers: {
+          ...ingestAuthHeaders(),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -160,9 +222,10 @@ export function IngestionWorkbench() {
           imageBase64: selectedImageDataUrl === null ? undefined : selectedImageDataUrl.split(',')[1] ?? selectedImageDataUrl,
           imageMimeType: temporaryImage?.file.type,
           source: {
-            type: activeTab === 'paste' ? 'pasted-text' : activeTab,
-            name: activeTab === 'paste' ? 'Pasted recipe text' : activeTab === 'url' ? recipeUrl : temporaryImage?.file.name,
+            type: sourceType,
+            name: trimmedSourceName,
             url: activeTab === 'url' ? recipeUrl : undefined,
+            author: trimmedSourceAuthor,
             accessedAt: new Date().toISOString(),
           },
         }),
@@ -217,21 +280,21 @@ export function IngestionWorkbench() {
         <div className="grid grid-cols-3 border-b border-stone-200 text-sm font-semibold">
           <button
             type="button"
-            onClick={() => setActiveTab('paste')}
+            onClick={() => selectTab('paste')}
             className={`px-3 py-3 ${activeTab === 'paste' ? 'bg-emerald-50 text-emerald-950' : 'text-stone-600'}`}
           >
             Paste text
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('image')}
+            onClick={() => selectTab('image')}
             className={`px-3 py-3 ${activeTab === 'image' ? 'bg-emerald-50 text-emerald-950' : 'text-stone-600'}`}
           >
             Image/photo
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('url')}
+            onClick={() => selectTab('url')}
             className={`px-3 py-3 ${activeTab === 'url' ? 'bg-emerald-50 text-emerald-950' : 'text-stone-600'}`}
           >
             URL
@@ -344,6 +407,50 @@ export function IngestionWorkbench() {
           </div>
 
           <aside className="space-y-4">
+            <div className="rounded-md border border-stone-200 bg-white p-4">
+              <h2 className="text-lg font-semibold text-stone-900">Source details</h2>
+              <div className="mt-3 grid gap-3">
+                <label className="grid gap-1 text-sm font-medium text-stone-700">
+                  <span>Source type</span>
+                  <select
+                    className="h-10 rounded-md border border-stone-300 bg-white px-3 text-sm text-stone-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
+                    value={sourceType}
+                    onChange={(event) => setSourceType(event.target.value as SourceType)}
+                  >
+                    {ingestSourceTypeValues.map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid gap-1 text-sm font-medium text-stone-700">
+                  <span>{sourceType === 'book' ? 'Book title' : 'Source name'}</span>
+                  <input
+                    className="h-10 rounded-md border border-stone-300 bg-white px-3 text-sm text-stone-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
+                    list="ingest-book-suggestions"
+                    value={sourceName}
+                    onChange={(event) => setSourceName(event.target.value)}
+                    placeholder={sourceType === 'book' ? 'Cookbook title' : 'Optional source name'}
+                  />
+                  <datalist id="ingest-book-suggestions">
+                    {bookSuggestions.map((book) => (
+                      <option key={book} value={book} />
+                    ))}
+                  </datalist>
+                </label>
+                <label className="grid gap-1 text-sm font-medium text-stone-700">
+                  <span>Author</span>
+                  <input
+                    className="h-10 rounded-md border border-stone-300 bg-white px-3 text-sm text-stone-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
+                    value={sourceAuthor}
+                    onChange={(event) => setSourceAuthor(event.target.value)}
+                    placeholder="Optional"
+                  />
+                </label>
+              </div>
+            </div>
+
             <div className="rounded-md border border-stone-200 bg-stone-50 p-4">
               <h2 className="text-lg font-semibold text-stone-900">Extraction</h2>
               <p className="mt-2 text-sm leading-6 text-stone-600">{statusText(status)}</p>
@@ -366,6 +473,11 @@ export function IngestionWorkbench() {
                   {extractError}
                 </p>
               )}
+              {!hasIngestToken ? (
+                <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                  Add the ingest token in Settings before running extraction on this device.
+                </p>
+              ) : null}
               <button
                 type="button"
                 onClick={() => void handleExtract()}

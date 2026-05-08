@@ -4,3 +4,8 @@
 .next/
 node_modules/
 tsconfig.tsbuildinfo
+
+.vercel
+.env*.local
+Keep/
+.cookagent/

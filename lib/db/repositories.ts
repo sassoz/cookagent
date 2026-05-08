@@ -1,6 +1,7 @@
 import { db, type RecipeDraft } from './dexie';
 import { normalizeRecipe, updateRecipeTimestamp } from '@/lib/recipe/normalize';
 import type { Recipe, RecipeComplexity, RecipeStatusTag } from '@/lib/recipe/schema';
+import { syncAuthHeaders } from '@/lib/sync/auth';
 
 export interface RecipeSearchFilters {
   complexity?: RecipeComplexity[];
@@ -64,6 +65,40 @@ function matchesFilters(recipe: Recipe, filters: RecipeSearchFilters): boolean {
   );
 }
 
+function canUseBrowserSync(): boolean {
+  return typeof window !== 'undefined';
+}
+
+function pushRecipeToCloud(recipe: Recipe): void {
+  if (!canUseBrowserSync()) {
+    return;
+  }
+
+  void fetch('/api/sync/recipes', {
+    method: 'PUT',
+    headers: {
+      ...syncAuthHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ recipes: [recipe] }),
+  }).catch(() => {
+    // Local-first writes must not fail just because cloud sync is unavailable.
+  });
+}
+
+function deleteRecipeFromCloud(id: string): void {
+  if (!canUseBrowserSync()) {
+    return;
+  }
+
+  void fetch(`/api/sync/recipes/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: syncAuthHeaders(),
+  }).catch(() => {
+    // Local-first deletes must not fail just because cloud sync is unavailable.
+  });
+}
+
 export async function listRecipes(): Promise<Recipe[]> {
   return db.recipes.orderBy('updatedAt').reverse().toArray();
 }
@@ -78,12 +113,14 @@ export async function saveRecipe(recipe: Recipe): Promise<string> {
   const normalizedRecipe = updateRecipeTimestamp(normalizeRecipe(recipe));
 
   await db.recipes.put(normalizedRecipe);
+  pushRecipeToCloud(normalizedRecipe);
 
   return normalizedRecipe.id;
 }
 
 export async function deleteRecipe(id: string): Promise<void> {
   await db.recipes.delete(id);
+  deleteRecipeFromCloud(id);
 }
 
 export async function searchRecipes(query: string, filters: RecipeSearchFilters = {}): Promise<Recipe[]> {

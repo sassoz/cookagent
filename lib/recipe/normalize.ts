@@ -1,4 +1,5 @@
 import { createEmptyRecipe } from './defaults';
+import { withBookClassification } from './bookSource';
 import { type Recipe, recipeSchema } from './schema';
 
 type RecipeRecord = Record<string, unknown>;
@@ -57,7 +58,7 @@ export function normalizeRecipe(input: unknown): Recipe {
   const totalMinutes = typeof times.totalMinutes === 'number' ? times.totalMinutes : computeTotalTime(times);
   const now = new Date().toISOString();
 
-  return recipeSchema.parse({
+  return withBookClassification(recipeSchema.parse({
     ...merged,
     times: {
       ...times,
@@ -83,12 +84,12 @@ export function normalizeRecipe(input: unknown): Recipe {
     },
     createdAt: typeof merged.createdAt === 'string' ? merged.createdAt : now,
     updatedAt: typeof merged.updatedAt === 'string' ? merged.updatedAt : now,
-  });
+  }));
 }
 
 export function updateRecipeTimestamp(recipe: Recipe, date = new Date()): Recipe {
-  return recipeSchema.parse({
+  return withBookClassification(recipeSchema.parse({
     ...recipe,
     updatedAt: date.toISOString(),
-  });
+  }));
 }

@@ -17,6 +17,7 @@ import {
   groupIngredients,
   groupSteps,
 } from '@/lib/recipe/display';
+import { getRecipeMarkdownSections } from '@/lib/recipe/markdownSections';
 import type { Recipe } from '@/lib/recipe/schema';
 
 interface RecipeDetailProps {
@@ -106,6 +107,7 @@ export function RecipeDetail({ id }: RecipeDetailProps) {
   const stepGroups = groupSteps(recipe.steps);
   const tags = getRecipeTags(recipe);
   const lastCookedDate = getLastCookedDate(recipe);
+  const markdownSections = getRecipeMarkdownSections(recipe);
 
   async function handleDelete(recipeToDelete: Recipe) {
     if (!window.confirm(`Delete "${recipeToDelete.title}" from local recipe storage?`)) {
@@ -235,6 +237,22 @@ export function RecipeDetail({ id }: RecipeDetailProps) {
           )}
         </div>
       </section>
+
+      {markdownSections.length === 0 ? null : (
+        <section className="rounded-md border border-stone-200 bg-white p-5 shadow-sm">
+          <h2 className="text-2xl font-semibold text-stone-900">Original text</h2>
+          <div className="mt-4 space-y-5">
+            {markdownSections.map((section) => (
+              <section key={section.title}>
+                <h3 className="text-sm font-semibold uppercase text-stone-500">{section.title}</h3>
+                <div className="mt-2 whitespace-pre-wrap rounded-md bg-stone-50 p-4 font-sans text-sm leading-6 text-stone-800">
+                  {section.text}
+                </div>
+              </section>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-md border border-stone-200 bg-white p-5 shadow-sm">

@@ -30,7 +30,7 @@ export const recipeImageMetadataSchema = z
 
 export const recipeSourceMetadataSchema = z
   .object({
-    type: z.enum(['manual', 'pasted-text', 'image', 'url', 'import']),
+    type: z.enum(['manual', 'pasted-text', 'image', 'url', 'import', 'book']),
     name: nullableTextSchema,
     url: z.string().url().nullable(),
     author: nullableTextSchema,

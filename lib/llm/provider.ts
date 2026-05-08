@@ -61,7 +61,7 @@ function envBoolean(name: string, fallback: boolean): boolean {
 }
 
 function selectedProviderName(): LlmProviderName {
-  const provider = envValue('LLM_PROVIDER') ?? 'openai';
+  const provider = envValue('LLM_PROVIDER') ?? 'gemini';
 
   if (provider === 'openai' || provider === 'lmstudio' || provider === 'cookagent' || provider === 'gemini' || provider === 'nvidia') {
     return provider;

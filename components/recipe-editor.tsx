@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ZodError } from 'zod';
 
-import { getRecipe, saveRecipe } from '@/lib/db/repositories';
+import { getRecipe, listRecipes, saveRecipe } from '@/lib/db/repositories';
 import { imageFileFromClipboard } from '@/lib/browser/clipboardImage';
 import { seedDevelopmentRecipes } from '@/lib/db/seed';
 import { createEmptyRecipe } from '@/lib/recipe/defaults';
@@ -32,7 +32,7 @@ interface RecipeEditorProps {
 type StringField = 'dishType' | 'mainIngredients' | 'season' | 'dietary' | 'tags' | 'cuisine';
 
 const acceptedImageTypes = 'image/png,image/jpeg,image/webp,image/heic,image/heif';
-const sourceTypeValues = ['manual', 'pasted-text', 'image', 'url', 'import'] as const;
+const sourceTypeValues = ['manual', 'pasted-text', 'image', 'url', 'import', 'book'] as const;
 
 function nullableText(value: string): string | null {
   const trimmed = value.trim();
@@ -157,6 +157,7 @@ export function RecipeEditor({ cancelHref, eyebrow, heading, id, initialRecipe }
   const [customTagInput, setCustomTagInput] = useState('');
   const [isLoading, setIsLoading] = useState(id !== undefined && initialRecipe === undefined);
   const [isSaving, setIsSaving] = useState(false);
+  const [bookSuggestions, setBookSuggestions] = useState<string[]>([]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -199,6 +200,39 @@ export function RecipeEditor({ cancelHref, eyebrow, heading, id, initialRecipe }
       isMounted = false;
     };
   }, [id, initialRecipe]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadBookSuggestions() {
+      try {
+        await seedDevelopmentRecipes();
+        const recipes = await listRecipes();
+        const books = Array.from(
+          new Set(
+            recipes
+              .filter((storedRecipe) => storedRecipe.source.type === 'book' && storedRecipe.source.name !== null)
+              .map((storedRecipe) => storedRecipe.source.name?.trim() ?? '')
+              .filter((name) => name.length > 0),
+          ),
+        ).sort((a, b) => a.localeCompare(b));
+
+        if (isMounted) {
+          setBookSuggestions(books);
+        }
+      } catch {
+        if (isMounted) {
+          setBookSuggestions([]);
+        }
+      }
+    }
+
+    void loadBookSuggestions();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   function setRecipeValue(update: (current: Recipe) => Recipe) {
     setRecipe((current) => update(current));
@@ -550,6 +584,7 @@ export function RecipeEditor({ cancelHref, eyebrow, heading, id, initialRecipe }
           <Field label="Source name">
             <input
               className={inputClass}
+              list="recipe-source-book-suggestions"
               value={recipe.source.name ?? ''}
               onChange={(event) =>
                 setRecipeValue((current) => ({
@@ -558,6 +593,11 @@ export function RecipeEditor({ cancelHref, eyebrow, heading, id, initialRecipe }
                 }))
               }
             />
+            <datalist id="recipe-source-book-suggestions">
+              {bookSuggestions.map((book) => (
+                <option key={book} value={book} />
+              ))}
+            </datalist>
           </Field>
           <Field label="Source URL">
             <input
@@ -904,6 +944,23 @@ export function RecipeEditor({ cancelHref, eyebrow, heading, id, initialRecipe }
           ))}
         </div>
       </div>
+
+      <footer className="flex justify-end gap-2 rounded-md border border-stone-200 bg-white p-3 shadow-sm">
+        <Link
+          href={cancelHref ?? (id === undefined ? '/recipes' : `/recipes/${recipe.id}`)}
+          className="rounded-md border border-stone-300 px-4 py-2 text-sm font-semibold text-stone-800"
+        >
+          Cancel
+        </Link>
+        <button
+          type="button"
+          onClick={() => void handleSave()}
+          disabled={isSaving}
+          className="rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isSaving ? 'Saving...' : 'Save recipe'}
+        </button>
+      </footer>
     </section>
   );
 }

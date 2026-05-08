@@ -52,6 +52,17 @@ function buildSearchFilters(filters: FilterState): RecipeSearchFilters {
   };
 }
 
+function getDailyRecipe(recipes: Recipe[]): Recipe | null {
+  if (recipes.length === 0) {
+    return null;
+  }
+
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const seed = Array.from(todayKey).reduce((total, character) => total + character.charCodeAt(0), 0);
+
+  return recipes[seed % recipes.length];
+}
+
 function FilterSelect({
   label,
   onChange,
@@ -86,7 +97,7 @@ function LocalStatusPanel({ recipes }: { recipes: Recipe[] }) {
   const cookedRecipes = recipes.filter((recipe) => recipe.personal.cookedSessions.length > 0).length;
 
   return (
-    <section className="grid gap-3 sm:grid-cols-3">
+    <section className="grid gap-3 sm:grid-cols-2">
       <div className="rounded-md border border-stone-200 bg-white p-4 shadow-sm">
         <p className="text-xs font-semibold uppercase text-stone-500">Local library</p>
         <p className="mt-2 text-2xl font-semibold tracking-tight text-stone-950">{recipes.length}</p>
@@ -96,12 +107,6 @@ function LocalStatusPanel({ recipes }: { recipes: Recipe[] }) {
         <p className="text-xs font-semibold uppercase text-stone-500">Cooked</p>
         <p className="mt-2 text-2xl font-semibold tracking-tight text-stone-950">{cookedRecipes}</p>
         <p className="mt-1 text-sm text-stone-600">with session history</p>
-      </div>
-      <div className="rounded-md border border-emerald-900/10 bg-emerald-950 p-4 text-emerald-50 shadow-sm">
-        <p className="text-xs font-semibold uppercase text-emerald-100/70">Offline ready</p>
-        <p className="mt-2 text-sm leading-6 text-emerald-50/90">
-          Recipes are stored in IndexedDB and stay available without a network connection.
-        </p>
       </div>
     </section>
   );
@@ -182,7 +187,7 @@ export function RecipeDashboard({
   );
 
   const hasActiveFilters = Object.values(filters).some((value) => value !== '');
-  const todayRecipe = visibleRecipes[0] ?? recipes[0] ?? null;
+  const todayRecipe = getDailyRecipe(recipes);
 
   return (
     <section className="space-y-6">
@@ -275,7 +280,7 @@ export function RecipeDashboard({
         <aside className="space-y-3 lg:sticky lg:top-5">
           <div className="rounded-md border border-stone-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold text-stone-950">Today</h2>
+              <h2 className="text-lg font-semibold text-stone-950">Recipe of the day</h2>
               <span className="text-xs font-semibold uppercase text-emerald-800">Kitchen mode</span>
             </div>
             {todayRecipe === null ? (
@@ -302,12 +307,6 @@ export function RecipeDashboard({
                 Export backup
               </Link>
             </div>
-          </div>
-          <div className="rounded-md border border-amber-200 bg-amber-50 p-4">
-            <p className="text-sm font-semibold text-amber-950">Review before save</p>
-            <p className="mt-2 text-sm leading-6 text-amber-900">
-              AI extraction creates a structured draft first. Raw recipe input is not stored by default.
-            </p>
           </div>
         </aside>
       </div>

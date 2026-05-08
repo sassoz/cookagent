@@ -1,4 +1,5 @@
 import { createEmptyRecipe } from '@/lib/recipe/defaults';
+import { withBookClassification } from '@/lib/recipe/bookSource';
 import {
   recipeClassificationSchema,
   recipeIngredientSchema,
@@ -67,7 +68,7 @@ export function compactDraftToRecipe(draft: CompactRecipeDraft, source: Partial<
     notes.push(`Timing from source: ${draft.timeText}`);
   }
 
-  return {
+  return withBookClassification({
     ...recipe,
     id: `${slugify(draft.title)}-draft`,
     title: draft.title,
@@ -134,5 +135,5 @@ export function compactDraftToRecipe(draft: CompactRecipeDraft, source: Partial<
     },
     createdAt: now,
     updatedAt: now,
-  };
+  });
 }

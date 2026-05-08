@@ -32,6 +32,7 @@ const EXTRACTION_RULES = [
   'Do not create nutrition data for the MVP.',
   'Use placeholder image metadata: all image fields should be null unless durable final image metadata is explicitly provided.',
   'Store provided source metadata in source, but do not store raw source text or raw OCR/image content anywhere in the recipe.',
+  'If the current source metadata says type book, preserve source.type as book, source.name as the book title, and source.author as the book author when provided.',
   'Set personal.rating to null, personal.comments to [], and personal.cookedSessions to [] unless the input explicitly contains personal data.',
 ];
 
@@ -43,6 +44,7 @@ const CLASSIFICATION_RULES = [
   'season should list likely seasons only when obvious, such as primavera, estate, autunno, inverno, tutto l\'anno.',
   'dietary should include clear Italian labels only when supported, such as vegetariano, vegano, senza glutine, senza latticini, contiene carne, contiene pesce.',
   'tags should be practical Italian review/browsing tags such as cena veloce, da preparare in anticipo, una padella, forno, avanzi, dispensa, rapido.',
+  'If source.type is book and source.name is present, include a classification tag exactly in the form "libro: <source.name>" so recipes from the same book can be grouped.',
   'personal.statusTags may only use: to try, standard rotation, quick overnight, kid-friendly, good for crowd.',
   'Suggest statusTags only when obvious from the source, for example quick overnight for overnight doughs or good for crowd for large batch recipes.',
 ];

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { createLlmProvider, LlmProviderError } from '@/lib/llm/provider';
 import { compactDraftToRecipe, compactRecipeDraftSchema } from '@/lib/llm/extractionDraft';
 import { fetchRecipeSourceFromUrl } from '@/lib/llm/urlRecipeSource';
+import { isIngestAuthorized } from '@/lib/llm/auth';
 import { recipeSourceMetadataSchema, recipeSchema } from '@/lib/recipe/schema';
 import { normalizeRecipe } from '@/lib/recipe/normalize';
 
@@ -65,6 +66,10 @@ function recipeValidationDetails(error: z.ZodError): { issues: z.ZodIssue[]; sum
 }
 
 export async function POST(request: Request) {
+  if (!isIngestAuthorized(request)) {
+    return jsonError(401, 'ingest_unauthorized', 'Ingest token is missing or invalid.');
+  }
+
   let body: unknown;
 
   try {
