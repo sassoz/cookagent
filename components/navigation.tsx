@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation';
 
 const links = [
   { href: '/', label: 'Home' },
-  { href: '/recipes', label: 'Recipes' },
   { href: '/ingest', label: 'Ingest' },
   { href: '/keep-import', label: 'Keep' },
   { href: '/settings', label: 'Settings' },
@@ -52,7 +51,7 @@ export function Navigation() {
       </nav>
 
       <nav className="fixed bottom-0 left-0 right-0 z-20 border-t border-stone-200 bg-white/95 backdrop-blur sm:hidden">
-        <ul className="mx-auto grid w-full max-w-md grid-cols-5">
+        <ul className="mx-auto grid w-full max-w-md grid-cols-4">
           {links.map((link) => {
             const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(`${link.href}/`));
             return (
