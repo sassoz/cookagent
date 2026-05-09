@@ -290,7 +290,8 @@ export function RecipeDashboard() {
     <section className="space-y-6">
       <RecipeOfTheDay recipe={todayRecipe} />
 
-      <div className="grid min-w-0 gap-3 rounded-md border border-stone-200 bg-white p-3 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
+      <div className="space-y-3 rounded-md border border-stone-200 bg-white p-3 shadow-sm">
+        <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label className="grid gap-1 text-sm font-medium text-stone-700 sm:col-span-2 lg:col-span-4">
           <span>Search recipes</span>
           <input
@@ -302,42 +303,6 @@ export function RecipeDashboard() {
           />
         </label>
 
-        <FilterSelect
-          label="Dish type"
-          value={filters.dishType}
-          onChange={(dishType) => setFilters((current) => ({ ...current, dishType }))}
-          options={filterOptions.dishTypes}
-        />
-        <FilterSelect
-          label="Complexity"
-          value={filters.complexity}
-          onChange={(complexity) => setFilters((current) => ({ ...current, complexity: complexity as FilterState['complexity'] }))}
-          options={[...recipeComplexityValues]}
-        />
-        <FilterSelect
-          label="Status"
-          value={filters.statusTag}
-          onChange={(statusTag) => setFilters((current) => ({ ...current, statusTag: statusTag as FilterState['statusTag'] }))}
-          options={[...recipeStatusTagValues]}
-        />
-        <FilterSelect
-          label="Season"
-          value={filters.season}
-          onChange={(season) => setFilters((current) => ({ ...current, season }))}
-          options={filterOptions.seasons}
-        />
-        <FilterSelect
-          label="Main ingredient"
-          value={filters.mainIngredient}
-          onChange={(mainIngredient) => setFilters((current) => ({ ...current, mainIngredient }))}
-          options={filterOptions.mainIngredients}
-        />
-        <FilterSelect
-          label="Custom tag"
-          value={filters.tag}
-          onChange={(tag) => setFilters((current) => ({ ...current, tag }))}
-          options={filterOptions.tags}
-        />
         <label className="grid gap-1 text-sm font-medium text-stone-700">
           <span>Sort by</span>
           <select
@@ -390,6 +355,51 @@ export function RecipeDashboard() {
             Clear filters
           </button>
         </div>
+        </div>
+
+        <details className="rounded-md border border-stone-200 bg-stone-50 p-3">
+          <summary className="cursor-pointer text-sm font-semibold text-stone-800">
+            Filters{hasActiveFilters ? ' active' : ''}
+          </summary>
+          <div className="mt-3 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <FilterSelect
+              label="Dish type"
+              value={filters.dishType}
+              onChange={(dishType) => setFilters((current) => ({ ...current, dishType }))}
+              options={filterOptions.dishTypes}
+            />
+            <FilterSelect
+              label="Complexity"
+              value={filters.complexity}
+              onChange={(complexity) => setFilters((current) => ({ ...current, complexity: complexity as FilterState['complexity'] }))}
+              options={[...recipeComplexityValues]}
+            />
+            <FilterSelect
+              label="Status"
+              value={filters.statusTag}
+              onChange={(statusTag) => setFilters((current) => ({ ...current, statusTag: statusTag as FilterState['statusTag'] }))}
+              options={[...recipeStatusTagValues]}
+            />
+            <FilterSelect
+              label="Season"
+              value={filters.season}
+              onChange={(season) => setFilters((current) => ({ ...current, season }))}
+              options={filterOptions.seasons}
+            />
+            <FilterSelect
+              label="Main ingredient"
+              value={filters.mainIngredient}
+              onChange={(mainIngredient) => setFilters((current) => ({ ...current, mainIngredient }))}
+              options={filterOptions.mainIngredients}
+            />
+            <FilterSelect
+              label="Custom tag"
+              value={filters.tag}
+              onChange={(tag) => setFilters((current) => ({ ...current, tag }))}
+              options={filterOptions.tags}
+            />
+          </div>
+        </details>
       </div>
 
       {error === null ? null : (

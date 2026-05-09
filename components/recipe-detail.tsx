@@ -18,7 +18,7 @@ import {
   groupSteps,
 } from '@/lib/recipe/display';
 import { getRecipeMarkdownSections } from '@/lib/recipe/markdownSections';
-import type { Recipe } from '@/lib/recipe/schema';
+import type { Recipe, RecipeIngredient } from '@/lib/recipe/schema';
 
 interface RecipeDetailProps {
   id: string;
@@ -46,12 +46,78 @@ function SourceInfo({ recipe }: { recipe: Recipe }) {
   return <p className="text-sm leading-6 text-stone-600">{pieces.join(' · ') || 'No source recorded.'}</p>;
 }
 
+function parseQuantityPart(value: string): number | null {
+  const trimmedValue = value.trim().replace(',', '.');
+  const mixedMatch = trimmedValue.match(/^(\d+)\s+(\d+)\s*\/\s*(\d+)$/);
+
+  if (mixedMatch !== null) {
+    const whole = Number(mixedMatch[1]);
+    const numerator = Number(mixedMatch[2]);
+    const denominator = Number(mixedMatch[3]);
+
+    return denominator === 0 ? null : whole + numerator / denominator;
+  }
+
+  const fractionMatch = trimmedValue.match(/^(\d+)\s*\/\s*(\d+)$/);
+
+  if (fractionMatch !== null) {
+    const numerator = Number(fractionMatch[1]);
+    const denominator = Number(fractionMatch[2]);
+
+    return denominator === 0 ? null : numerator / denominator;
+  }
+
+  const numericValue = Number(trimmedValue);
+
+  return Number.isFinite(numericValue) ? numericValue : null;
+}
+
+function formatScaledNumber(value: number): string {
+  return Number.isInteger(value) ? value.toString() : value.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function scaleQuantity(quantity: string | null, scaleFactor: number): string | null {
+  if (quantity === null || scaleFactor === 1) {
+    return quantity;
+  }
+
+  const rangeParts = quantity.split('-').map((part) => part.trim());
+
+  if (rangeParts.length === 2) {
+    const parsedRange = rangeParts.map(parseQuantityPart);
+
+    if (parsedRange.every((value): value is number => value !== null)) {
+      return parsedRange.map((value) => formatScaledNumber(value * scaleFactor)).join('-');
+    }
+  }
+
+  const parsedQuantity = parseQuantityPart(quantity);
+
+  return parsedQuantity === null ? quantity : formatScaledNumber(parsedQuantity * scaleFactor);
+}
+
+function scaleIngredient(ingredient: RecipeIngredient, scaleFactor: number): RecipeIngredient {
+  return {
+    ...ingredient,
+    quantity: scaleQuantity(ingredient.quantity, scaleFactor),
+  };
+}
+
+function formatScaledServings(recipe: Recipe, scaleFactor: number): string {
+  const { note, quantity, unit } = recipe.servings;
+  const scaledQuantity = quantity === null ? null : formatScaledNumber(quantity * scaleFactor);
+  const servingsText = [scaledQuantity, unit].filter(Boolean).join(' ');
+
+  return [servingsText || 'Not set', note].filter(Boolean).join(', ');
+}
+
 export function RecipeDetail({ id }: RecipeDetailProps) {
   const router = useRouter();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [scaleFactor, setScaleFactor] = useState(1);
 
   useEffect(() => {
     let isMounted = true;
@@ -103,7 +169,7 @@ export function RecipeDetail({ id }: RecipeDetailProps) {
     );
   }
 
-  const ingredientGroups = groupIngredients(recipe.ingredients);
+  const ingredientGroups = groupIngredients(recipe.ingredients.map((ingredient) => scaleIngredient(ingredient, scaleFactor)));
   const stepGroups = groupSteps(recipe.steps);
   const tags = getRecipeTags(recipe);
   const lastCookedDate = getLastCookedDate(recipe);
@@ -187,7 +253,47 @@ export function RecipeDetail({ id }: RecipeDetailProps) {
 
       <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
         <div className="rounded-md border border-stone-200 bg-white p-5 shadow-sm">
-          <h2 className="text-2xl font-semibold text-stone-900">Ingredients</h2>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold text-stone-900">Ingredients</h2>
+              <p className="mt-1 text-sm text-stone-600">Scaled servings: {formatScaledServings(recipe, scaleFactor)}</p>
+            </div>
+            <div className="rounded-md border border-stone-200 bg-stone-50 p-3">
+              <p className="text-xs font-semibold uppercase text-stone-500">Scale doses</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {[0.5, 1, 1.5, 2, 3].map((factor) => (
+                  <button
+                    key={factor}
+                    type="button"
+                    onClick={() => setScaleFactor(factor)}
+                    className={`h-9 rounded-md px-3 text-sm font-semibold transition ${
+                      scaleFactor === factor ? 'bg-brand text-white' : 'border border-stone-300 bg-white text-stone-800 hover:border-stone-400'
+                    }`}
+                  >
+                    {factor}x
+                  </button>
+                ))}
+              </div>
+              <label className="mt-3 grid gap-1 text-sm font-medium text-stone-700">
+                <span>Custom multiplier</span>
+                <input
+                  type="number"
+                  min="0.25"
+                  max="10"
+                  step="0.25"
+                  value={scaleFactor}
+                  onChange={(event) => {
+                    const nextFactor = Number(event.target.value);
+
+                    if (Number.isFinite(nextFactor) && nextFactor > 0) {
+                      setScaleFactor(nextFactor);
+                    }
+                  }}
+                  className="h-10 rounded-md border border-stone-300 bg-white px-3 text-sm text-stone-900 outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
+                />
+              </label>
+            </div>
+          </div>
           {ingredientGroups.length === 0 ? (
             <p className="mt-3 text-sm text-stone-600">No ingredients recorded.</p>
           ) : (
