@@ -7,5 +7,5 @@ tsconfig.tsbuildinfo
 
 .vercel
 .env*.local
-Keep/
+/Keep/
 .cookagent/
