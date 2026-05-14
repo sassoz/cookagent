@@ -35,15 +35,35 @@ function DetailField({ label, value }: { label: string; value: string }) {
 
 function SourceInfo({ recipe }: { recipe: Recipe }) {
   const source = recipe.source;
-  const sourceName = source.url === null ? source.name : source.url;
   const pieces = [
     source.type,
-    sourceName,
+    source.name,
     source.author === null ? null : `by ${source.author}`,
     source.accessedAt === null ? null : `accessed ${formatDate(source.accessedAt)}`,
   ].filter(Boolean);
 
-  return <p className="text-sm leading-6 text-stone-600">{pieces.join(' · ') || 'No source recorded.'}</p>;
+  if (pieces.length === 0 && source.url === null) {
+    return <p className="text-sm leading-6 text-stone-600">No source recorded.</p>;
+  }
+
+  return (
+    <p className="break-words text-sm leading-6 text-stone-600">
+      {pieces.join(' · ')}
+      {source.url === null ? null : (
+        <>
+          {pieces.length === 0 ? null : ' · '}
+          <a
+            href={source.url}
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium text-emerald-800 underline decoration-emerald-700/30 underline-offset-2 hover:text-emerald-950"
+          >
+            {source.url}
+          </a>
+        </>
+      )}
+    </p>
+  );
 }
 
 function parseQuantityPart(value: string): number | null {

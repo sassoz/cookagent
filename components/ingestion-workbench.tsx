@@ -19,7 +19,6 @@ interface TemporaryImage {
   previewUrl: string;
 }
 
-const acceptedImageTypes = 'image/png,image/jpeg,image/webp,image/heic,image/heif';
 const ingestSourceTypeValues: SourceType[] = ['pasted-text', 'image', 'url', 'book', 'import'];
 
 function nullableTrimmedText(value: string): string | null {
@@ -297,7 +296,7 @@ export function IngestionWorkbench() {
             onClick={() => selectTab('url')}
             className={`px-3 py-3 ${activeTab === 'url' ? 'bg-emerald-50 text-emerald-950' : 'text-stone-600'}`}
           >
-            URL
+            URL/video
           </button>
         </div>
 
@@ -331,12 +330,12 @@ export function IngestionWorkbench() {
                       setDraftRecipe(null);
                       setExtractError(null);
                     }}
-                    placeholder="https://example.com/recipe"
+                    placeholder="https://example.com/recipe or https://youtube.com/watch?v=..."
                     className="h-11 rounded-md border border-stone-300 bg-white px-3 text-base text-stone-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
                   />
                 </label>
                 <p className="mt-3 text-sm leading-6 text-stone-600">
-                  Cookagent will fetch the page on the backend, prefer structured recipe metadata when available, and save only recipe metadata in the final draft.
+                  Cookagent will fetch the page on the backend. For YouTube, it will use public captions when available and save only recipe metadata in the final draft.
                 </p>
               </div>
             ) : (
@@ -344,29 +343,17 @@ export function IngestionWorkbench() {
                 <div className="rounded-md border border-dashed border-stone-300 bg-stone-50 p-4">
                   <p className="text-sm font-semibold text-stone-900">Upload screenshot or book photo</p>
                   <p className="mt-1 text-sm leading-6 text-stone-600">
-                    Select, take, or paste an image from the clipboard. The selected image stays in this browser session for extraction preview only.
+                    Add or paste an image from the clipboard. The selected image stays in this browser session for extraction preview only.
                   </p>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <label className="grid gap-2 text-sm font-medium text-stone-700">
-                      <span>Select image</span>
-                      <input
-                        type="file"
-                        accept={acceptedImageTypes}
-                        onChange={(event) => setImage(event.target.files?.[0])}
-                        className="block w-full text-sm text-stone-700 file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
-                      />
-                    </label>
-                    <label className="grid gap-2 text-sm font-medium text-stone-700">
-                      <span>Take photo</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={(event) => setImage(event.target.files?.[0])}
-                        className="block w-full text-sm text-stone-700 file:mr-3 file:rounded-md file:border-0 file:bg-stone-800 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
-                      />
-                    </label>
-                  </div>
+                  <label className="mt-4 grid gap-2 text-sm font-medium text-stone-700">
+                    <span>Add photo</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(event) => setImage(event.target.files?.[0])}
+                      className="block w-full text-sm text-stone-700 file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
+                    />
+                  </label>
                   <label className="mt-4 flex items-start gap-2 text-sm text-stone-700">
                     <input
                       type="checkbox"
@@ -428,7 +415,9 @@ export function IngestionWorkbench() {
                   <span>{sourceType === 'book' ? 'Book title' : 'Source name'}</span>
                   <input
                     className="h-10 rounded-md border border-stone-300 bg-white px-3 text-sm text-stone-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15"
-                    list="ingest-book-suggestions"
+                    type="text"
+                    list={sourceType === 'book' ? 'ingest-book-suggestions' : undefined}
+                    autoComplete="off"
                     value={sourceName}
                     onChange={(event) => setSourceName(event.target.value)}
                     placeholder={sourceType === 'book' ? 'Cookbook title' : 'Optional source name'}

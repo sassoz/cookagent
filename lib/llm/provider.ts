@@ -9,6 +9,7 @@ export interface RecipeExtractionInput {
   imageBase64?: string;
   imageMimeType?: string;
   source?: Partial<RecipeSourceMetadata>;
+  videoUrl?: string;
 }
 
 export interface LlmProvider {

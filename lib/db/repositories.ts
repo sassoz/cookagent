@@ -13,15 +13,58 @@ export interface RecipeSearchFilters {
 }
 
 function normalizeSearchValue(value: string): string {
-  return value.trim().toLocaleLowerCase();
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLocaleLowerCase();
 }
 
-function includesSearchValue(value: string | null, query: string): boolean {
-  return value !== null && normalizeSearchValue(value).includes(query);
+function searchTokens(query: string): string[] {
+  return normalizeSearchValue(query)
+    .split(/[^a-z0-9]+/i)
+    .filter((token) => token.length >= 2);
 }
 
-function arrayIncludesQuery(values: string[], query: string): boolean {
-  return values.some((value) => normalizeSearchValue(value).includes(query));
+function searchableWords(value: string): string[] {
+  return normalizeSearchValue(value)
+    .split(/[^a-z0-9]+/i)
+    .filter(Boolean);
+}
+
+function searchTokenVariants(token: string): string[] {
+  const variants = new Set([token]);
+  const lastCharacter = token.at(-1);
+  const prefix = token.slice(0, -1);
+
+  if (token.length >= 4) {
+    if (lastCharacter === 'a') {
+      variants.add(`${prefix}e`);
+    } else if (lastCharacter === 'e') {
+      variants.add(`${prefix}i`);
+    } else if (lastCharacter === 'o') {
+      variants.add(`${prefix}i`);
+    } else if (lastCharacter === 'i') {
+      variants.add(`${prefix}o`);
+      variants.add(`${prefix}e`);
+    }
+  }
+
+  return Array.from(variants);
+}
+
+function tokenMatchesValue(value: string | null, token: string): boolean {
+  if (value === null) {
+    return false;
+  }
+
+  const variants = searchTokenVariants(token);
+
+  return searchableWords(value).some((word) => variants.some((variant) => word.startsWith(variant)));
+}
+
+function tokenMatchesArray(values: string[], token: string): boolean {
+  return values.some((value) => tokenMatchesValue(value, token));
 }
 
 function hasAllValues(values: string[], filters: string[] | undefined): boolean {
@@ -34,19 +77,27 @@ function hasAllValues(values: string[], filters: string[] | undefined): boolean 
   return filters.every((filter) => normalizedValues.has(normalizeSearchValue(filter)));
 }
 
-function matchesQuery(recipe: Recipe, query: string): boolean {
-  if (query.length === 0) {
-    return true;
+function matchesQuery(recipe: Recipe, tokens: string[], hasSearchQuery: boolean): boolean {
+  if (tokens.length === 0) {
+    return !hasSearchQuery;
   }
 
-  return (
-    includesSearchValue(recipe.title, query) ||
-    includesSearchValue(recipe.description, query) ||
-    arrayIncludesQuery(recipe.classification.mainIngredients, query) ||
-    arrayIncludesQuery(recipe.classification.tags, query) ||
-    arrayIncludesQuery(recipe.classification.dishType, query) ||
-    arrayIncludesQuery(recipe.personal.statusTags, query)
-  );
+  return tokens.every((token) => {
+    return (
+      tokenMatchesValue(recipe.title, token) ||
+      tokenMatchesValue(recipe.description, token) ||
+      tokenMatchesValue(recipe.source.name, token) ||
+      tokenMatchesValue(recipe.source.author, token) ||
+      tokenMatchesValue(recipe.source.url, token) ||
+      tokenMatchesArray(recipe.ingredients.map((ingredient) => ingredient.item), token) ||
+      tokenMatchesArray(recipe.steps.map((step) => step.text), token) ||
+      tokenMatchesArray(recipe.classification.mainIngredients, token) ||
+      tokenMatchesArray(recipe.classification.tags, token) ||
+      tokenMatchesArray(recipe.classification.dishType, token) ||
+      tokenMatchesArray(recipe.classification.cuisine, token) ||
+      tokenMatchesArray(recipe.personal.statusTags, token)
+    );
+  });
 }
 
 function matchesFilters(recipe: Recipe, filters: RecipeSearchFilters): boolean {
@@ -124,10 +175,11 @@ export async function deleteRecipe(id: string): Promise<void> {
 }
 
 export async function searchRecipes(query: string, filters: RecipeSearchFilters = {}): Promise<Recipe[]> {
-  const normalizedQuery = normalizeSearchValue(query);
+  const hasSearchQuery = normalizeSearchValue(query).length > 0;
+  const tokens = searchTokens(query);
   const recipes = await listRecipes();
 
-  return recipes.filter((recipe) => matchesQuery(recipe, normalizedQuery) && matchesFilters(recipe, filters));
+  return recipes.filter((recipe) => matchesQuery(recipe, tokens, hasSearchQuery) && matchesFilters(recipe, filters));
 }
 
 export async function saveDraft(draft: RecipeDraft): Promise<string> {

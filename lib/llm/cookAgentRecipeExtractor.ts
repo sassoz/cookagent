@@ -96,6 +96,14 @@ export class CookAgentRecipeExtractor {
       );
     }
 
+    if (input.videoUrl !== undefined) {
+      throw new LlmProviderError(
+        'Cookagent OpenClaw extraction currently supports pasted text only. Use Gemini for YouTube videos without public transcripts.',
+        'provider_capability_error',
+        400,
+      );
+    }
+
     const prompt = buildRecipeExtractionPrompt(input);
 
     try {

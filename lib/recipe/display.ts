@@ -39,12 +39,14 @@ export function getLastCookedDate(recipe: Recipe): string | null {
 }
 
 export function getRecipeTags(recipe: Recipe): string[] {
-  return [
+  const tags = [
     ...recipe.classification.tags,
     ...recipe.personal.statusTags,
     ...recipe.classification.dishType,
     ...recipe.classification.season,
   ];
+
+  return Array.from(new Set(tags));
 }
 
 export function groupIngredients(ingredients: RecipeIngredient[]): GroupedRecipeItems<RecipeIngredient>[] {

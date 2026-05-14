@@ -31,13 +31,10 @@ interface RecipeEditorProps {
 
 type StringField = 'dishType' | 'mainIngredients' | 'season' | 'dietary' | 'tags' | 'cuisine';
 
-const acceptedImageTypes = 'image/png,image/jpeg,image/webp,image/heic,image/heif';
 const sourceTypeValues = ['manual', 'pasted-text', 'image', 'url', 'import', 'book'] as const;
 
 function nullableText(value: string): string | null {
-  const trimmed = value.trim();
-
-  return trimmed.length === 0 ? null : trimmed;
+  return value.length === 0 ? null : value;
 }
 
 function nullableNumber(value: string): number | null {
@@ -65,10 +62,7 @@ function nullableIsoFromDateInput(value: string): string | null {
 }
 
 function parseList(value: string): string[] {
-  return value
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
+  return value.length === 0 ? [] : value.split(',');
 }
 
 function formatList(value: string[]): string {
@@ -81,6 +75,30 @@ function validationMessages(error: ZodError): string[] {
 
     return `${path}: ${issue.message}`;
   });
+}
+
+function cleanedTextArray(values: string[]): string[] {
+  return values.map((value) => value.trim()).filter(Boolean);
+}
+
+function cleanRecipeForSave(recipe: Recipe): Recipe {
+  return {
+    ...recipe,
+    notes: cleanedTextArray(recipe.notes),
+    classification: {
+      ...recipe.classification,
+      dishType: cleanedTextArray(recipe.classification.dishType),
+      mainIngredients: cleanedTextArray(recipe.classification.mainIngredients),
+      season: cleanedTextArray(recipe.classification.season),
+      dietary: cleanedTextArray(recipe.classification.dietary),
+      tags: cleanedTextArray(recipe.classification.tags),
+      cuisine: cleanedTextArray(recipe.classification.cuisine),
+    },
+    personal: {
+      ...recipe.personal,
+      comments: cleanedTextArray(recipe.personal.comments),
+    },
+  };
 }
 
 function Field({
@@ -315,7 +333,7 @@ export function RecipeEditor({ cancelHref, eyebrow, heading, id, initialRecipe }
     setValidationErrors([]);
 
     const candidate: Recipe = {
-      ...recipe,
+      ...cleanRecipeForSave(recipe),
       times: {
         ...recipe.times,
         totalMinutes: recipe.times.totalMinutes ?? computeTotalTime(recipe.times),
@@ -502,27 +520,15 @@ export function RecipeEditor({ cancelHref, eyebrow, heading, id, initialRecipe }
             )}
           </div>
           <div className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="grid gap-2 text-sm font-medium text-stone-700">
-                <span>Select photo</span>
-                <input
-                  type="file"
-                  accept={acceptedImageTypes}
-                  onChange={(event) => void handleImageFile(event.target.files?.[0])}
-                  className="block w-full text-sm text-stone-700 file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-medium text-stone-700">
-                <span>Take photo</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={(event) => void handleImageFile(event.target.files?.[0])}
-                  className="block w-full text-sm text-stone-700 file:mr-3 file:rounded-md file:border-0 file:bg-stone-800 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
-                />
-              </label>
-            </div>
+            <label className="grid gap-2 text-sm font-medium text-stone-700">
+              <span>Add photo</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(event) => void handleImageFile(event.target.files?.[0])}
+                className="block w-full text-sm text-stone-700 file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
+              />
+            </label>
             <p className="text-sm leading-6 text-stone-600">You can also paste an image from the clipboard while this photo section is focused.</p>
             <Field label="Photo alt text">
               <input
@@ -584,7 +590,9 @@ export function RecipeEditor({ cancelHref, eyebrow, heading, id, initialRecipe }
           <Field label="Source name">
             <input
               className={inputClass}
-              list="recipe-source-book-suggestions"
+              type="text"
+              list={recipe.source.type === 'book' ? 'recipe-source-book-suggestions' : undefined}
+              autoComplete="off"
               value={recipe.source.name ?? ''}
               onChange={(event) =>
                 setRecipeValue((current) => ({
@@ -859,7 +867,7 @@ export function RecipeEditor({ cancelHref, eyebrow, heading, id, initialRecipe }
               onChange={(event) =>
                 setRecipeValue((current) => ({
                   ...current,
-                  personal: { ...current.personal, comments: event.target.value.split('\n').map((line) => line.trim()).filter(Boolean) },
+                  personal: { ...current.personal, comments: event.target.value.split('\n') },
                 }))
               }
             />

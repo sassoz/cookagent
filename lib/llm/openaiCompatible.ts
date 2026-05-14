@@ -40,6 +40,23 @@ interface ChatCompletionChunk {
   };
 }
 
+interface GeminiGenerateContentResponse {
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{
+        text?: string;
+      }>;
+    };
+  }>;
+  error?: {
+    message?: string;
+  };
+}
+
+interface GeminiNativeRequestOptions {
+  generationConfig?: Record<string, unknown>;
+}
+
 type UserContentPart =
   | {
       type: 'text';
@@ -49,6 +66,16 @@ type UserContentPart =
       type: 'image_url';
       image_url: {
         url: string;
+      };
+    };
+
+type GeminiNativePart =
+  | {
+      text: string;
+    }
+  | {
+      file_data: {
+        file_uri: string;
       };
     };
 
@@ -63,6 +90,15 @@ function completionUrl(baseURL: string): string {
   const openAIBaseURL = normalizedBaseURL.endsWith('/v1') ? normalizedBaseURL : `${normalizedBaseURL}/v1`;
 
   return `${openAIBaseURL}/chat/completions`;
+}
+
+function geminiGenerateContentUrl(baseURL: string, model: string): string {
+  const normalizedBaseURL = baseURL
+    .replace(/\/openai\/?$/, '')
+    .replace(/\/v1beta\/?$/, '')
+    .replace(/\/$/, '');
+
+  return `${normalizedBaseURL}/v1beta/models/${encodeURIComponent(model)}:generateContent`;
 }
 
 function imageDataUrl(input: RecipeExtractionInput): string | null {
@@ -166,6 +202,76 @@ async function readStreamingContent(response: Response): Promise<string> {
   return content;
 }
 
+async function extractRecipeWithGeminiVideo(config: OpenAICompatibleProviderConfig, input: RecipeExtractionInput, prompt: string): Promise<string> {
+  if (input.videoUrl === undefined) {
+    throw new LlmProviderError('Gemini video extraction requires a video URL.', 'provider_capability_error', 400);
+  }
+
+  const parts: GeminiNativePart[] = [
+    {
+      text: [
+        prompt,
+        '',
+        'A YouTube video is attached as file_data. If the transcript text above is missing or incomplete, inspect the video directly and transcribe only the recipe-relevant cooking content before extracting the Recipe JSON.',
+      ].join('\n'),
+    },
+    {
+      file_data: {
+        file_uri: input.videoUrl,
+      },
+    },
+  ];
+  const nativeOptions = config.requestOptions as GeminiNativeRequestOptions | undefined;
+  const generationConfig = {
+    responseMimeType: 'application/json',
+    temperature: 0.1,
+    ...nativeOptions?.generationConfig,
+    ...(typeof config.requestOptions?.temperature === 'number' ? { temperature: config.requestOptions.temperature } : {}),
+  };
+  const response = await fetch(geminiGenerateContentUrl(config.baseURL, config.model), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': config.apiKey,
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          role: 'user',
+          parts,
+        },
+      ],
+      generationConfig,
+    }),
+  });
+  const responseText = await response.text();
+  let payload: GeminiGenerateContentResponse = {};
+
+  if (responseText.trim().length > 0) {
+    try {
+      payload = JSON.parse(responseText) as GeminiGenerateContentResponse;
+    } catch {
+      payload = {};
+    }
+  }
+
+  if (!response.ok) {
+    throw new LlmProviderError(
+      payload.error?.message ?? (responseText.trim() || `Gemini video extraction returned HTTP ${response.status}.`),
+      'provider_request_error',
+      response.status,
+    );
+  }
+
+  const content = payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? '').join('').trim();
+
+  if (content === undefined || content.length === 0) {
+    throw new LlmProviderError('Gemini video extraction returned an empty response.', 'provider_request_error', 502);
+  }
+
+  return content;
+}
+
 export function createOpenAICompatibleProvider(config: OpenAICompatibleProviderConfig): LlmProvider {
   return {
     name: config.name,
@@ -184,6 +290,19 @@ export function createOpenAICompatibleProvider(config: OpenAICompatibleProviderC
         config.promptStyle === 'compact'
           ? buildCompactRecipeExtractionPrompt(input)
           : buildRecipeExtractionPrompt(input);
+
+      if (input.videoUrl !== undefined) {
+        if (config.name === 'gemini') {
+          return extractRecipeWithGeminiVideo(config, input, prompt);
+        }
+
+        throw new LlmProviderError(
+          `${config.name} video extraction is not configured for this provider. Use Gemini for YouTube videos without public transcripts, or choose a video with captions.`,
+          'provider_capability_error',
+          400,
+        );
+      }
+
       let content: string | UserContentPart[] = prompt;
 
       if (imageUrl !== null) {

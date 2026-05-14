@@ -433,7 +433,7 @@ export function RecipeDashboard() {
         <div className="grid gap-3">
           {sortedRecipes.map((recipe) => {
             const lastCookedDate = getLastCookedDate(recipe);
-            const tags = [...recipe.classification.tags, ...recipe.personal.statusTags].slice(0, 4);
+            const tags = Array.from(new Set([...recipe.classification.tags, ...recipe.personal.statusTags])).slice(0, 4);
 
             return (
               <Link

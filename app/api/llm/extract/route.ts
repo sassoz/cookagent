@@ -14,13 +14,14 @@ const extractionRequestSchema = z
   .object({
     text: z.string().optional(),
     url: z.string().url().optional(),
+    videoUrl: z.string().url().optional(),
     imageBase64: z.string().optional(),
     imageMimeType: z.string().optional(),
     source: recipeSourceMetadataSchema.partial().optional(),
   })
   .strict()
-  .refine((value) => value.text?.trim() || value.imageBase64?.trim() || value.url?.trim(), {
-    message: 'Provide text input, imageBase64, or url.',
+  .refine((value) => value.text?.trim() || value.imageBase64?.trim() || value.url?.trim() || value.videoUrl?.trim(), {
+    message: 'Provide text input, imageBase64, url, or videoUrl.',
     path: ['text'],
   });
 
@@ -93,11 +94,13 @@ export async function POST(request: Request) {
       extractionInput = {
         ...extractionInput,
         text: fetchedSource.content,
+        videoUrl: fetchedSource.videoUrlForLlm ?? undefined,
         source: {
           ...extractionInput.source,
           type: 'url',
           name: extractionInput.source?.name ?? fetchedSource.title ?? extractionInput.url,
           url: extractionInput.url,
+          author: extractionInput.source?.author ?? fetchedSource.author,
           accessedAt: extractionInput.source?.accessedAt ?? new Date().toISOString(),
         },
       };

@@ -22,6 +22,8 @@ const EXTRACTION_RULES = [
   'Preserve source paragraph boundaries as separate steps whenever they describe different actions. Do not merge preparation, assembly, decoration, baking, cooling, or serving into the same step.',
   'If the source has separate paragraphs for pan filling, topping, baking, and cooling/serving, create separate steps for each of them.',
   'For URL imports or JSON-LD recipeInstructions, preserve each numbered instruction as its own Recipe step unless it is only a section heading such as DAY ONE or DAY TWO. Use those headings as step.section values for following steps.',
+  'For YouTube imports, treat transcript text as noisy spoken source material. Extract only recipe-supported ingredients, quantities, times, steps, and tips. Ignore greetings, subscriptions, sponsor segments, and unrelated chatter.',
+  'If a YouTube transcript is unavailable or incomplete, create a cautious review draft from available title/description only and clearly note missing quantities or method details.',
   'Each step.text should be detailed enough to preserve the original sentence-level guidance. Prefer 2-4 detailed sentences over a terse instruction when the source contains nuance.',
   'Preserve source nuance in Italian: examples include pan size, bowl size, ingredient temperature, flour dusting, “do not knead” warnings, optional alcohol, oven position, fan setting, doneness tests, cooling time, how to serve, sensory cues, and humorous/traditional notes.',
   'Put useful asides, caveats, jokes, tradition notes, serving rituals, and uncertainty into notes or markdown.methodNotes instead of dropping them.',

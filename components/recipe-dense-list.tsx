@@ -12,25 +12,117 @@ interface RecipeGroup {
   recipes: Recipe[];
 }
 
-function groupRecipesByDishType(recipes: Recipe[]): RecipeGroup[] {
+const categoryOrder = [
+  'Primi',
+  'Secondi',
+  'Contorni',
+  'Zuppe',
+  'Pane e lievitati',
+  'Dolci',
+  'Colazione e snack',
+  'Salse e conserve',
+  'Bevande',
+  'Altro',
+];
+
+const categoryAliases: Array<{ aliases: string[]; title: string }> = [
+  {
+    title: 'Dolci',
+    aliases: ['dolce', 'dolci', 'dessert', 'cake', 'cakes', 'torta', 'torte', 'pastry', 'pasticceria', 'gelato', 'ice cream', 'biscotto', 'biscotti', 'cookie', 'cookies', 'crostata'],
+  },
+  {
+    title: 'Pane e lievitati',
+    aliases: ['pane', 'bread', 'pizza', 'focaccia', 'lievitato', 'lievitati', 'impasto', 'dough', 'bakery'],
+  },
+  {
+    title: 'Primi',
+    aliases: ['primo', 'primi', 'pasta', 'risotto', 'riso', 'gnocchi', 'noodle', 'noodles', 'lasagna', 'lasagne'],
+  },
+  {
+    title: 'Secondi',
+    aliases: ['secondo', 'secondi', 'piatto principale', 'main', 'main dish', 'carne', 'meat', 'pollo', 'chicken', 'pesce', 'fish', 'orata', 'tacchino', 'beef', 'pork', 'maiale', 'uova', 'eggs'],
+  },
+  {
+    title: 'Contorni',
+    aliases: ['contorno', 'contorni', 'side', 'side dish', 'verdure', 'vegetable', 'vegetables', 'insalata', 'salad', 'melanzane', 'patate', 'potatoes'],
+  },
+  {
+    title: 'Zuppe',
+    aliases: ['zuppa', 'zuppe', 'soup', 'soups', 'minestra', 'minestrone', 'vellutata', 'brodo'],
+  },
+  {
+    title: 'Salse e conserve',
+    aliases: ['salsa', 'salse', 'sauce', 'sauces', 'condimento', 'dip', 'conserva', 'conserve', 'marmellata', 'jam'],
+  },
+  {
+    title: 'Colazione e snack',
+    aliases: ['colazione', 'breakfast', 'snack', 'merenda', 'brunch', 'antipasto', 'starter', 'appetizer'],
+  },
+  {
+    title: 'Bevande',
+    aliases: ['bevanda', 'bevande', 'drink', 'drinks', 'cocktail', 'smoothie', 'succo'],
+  },
+];
+
+function normalizeCategoryValue(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLocaleLowerCase();
+}
+
+function categoryFromValue(value: string): string | null {
+  const normalizedValue = normalizeCategoryValue(value);
+
+  if (normalizedValue.length === 0) {
+    return null;
+  }
+
+  const match = categoryAliases.find((category) => {
+    return category.aliases.some((alias) => {
+      const normalizedAlias = normalizeCategoryValue(alias);
+
+      return normalizedValue === normalizedAlias || normalizedValue.startsWith(`${normalizedAlias} `);
+    });
+  });
+
+  return match?.title ?? null;
+}
+
+function categoryForRecipe(recipe: Recipe): string {
+  const candidates = [
+    ...recipe.classification.dishType,
+    ...recipe.classification.tags,
+    ...recipe.classification.mainIngredients,
+  ];
+
+  for (const candidate of candidates) {
+    const category = categoryFromValue(candidate);
+
+    if (category !== null) {
+      return category;
+    }
+  }
+
+  return 'Altro';
+}
+
+function groupRecipesByCategory(recipes: Recipe[]): RecipeGroup[] {
   const groups = new Map<string, Recipe[]>();
 
   for (const recipe of recipes) {
-    const dishTypes = recipe.classification.dishType.length === 0 ? ['Uncategorized'] : recipe.classification.dishType;
+    const category = categoryForRecipe(recipe);
+    const groupRecipes = groups.get(category) ?? [];
 
-    for (const dishType of dishTypes) {
-      const normalizedDishType = dishType.trim() || 'Uncategorized';
-      const groupRecipes = groups.get(normalizedDishType) ?? [];
-
-      groupRecipes.push(recipe);
-      groups.set(normalizedDishType, groupRecipes);
-    }
+    groupRecipes.push(recipe);
+    groups.set(category, groupRecipes);
   }
 
   return Array.from(groups, ([title, groupRecipes]) => ({
     title,
     recipes: groupRecipes.sort((first, second) => first.title.localeCompare(second.title)),
-  })).sort((first, second) => first.title.localeCompare(second.title));
+  })).sort((first, second) => categoryOrder.indexOf(first.title) - categoryOrder.indexOf(second.title));
 }
 
 export function RecipeDenseList() {
@@ -68,13 +160,13 @@ export function RecipeDenseList() {
     };
   }, []);
 
-  const groups = useMemo(() => groupRecipesByDishType(recipes), [recipes]);
+  const groups = useMemo(() => groupRecipesByCategory(recipes), [recipes]);
 
   return (
     <section className="space-y-3">
       <header className="border-b border-stone-200 pb-3 sm:rounded-md sm:border sm:bg-white sm:p-4 sm:shadow-sm">
         <h1 className="text-xl font-semibold tracking-tight text-stone-950 sm:text-2xl">Recipe list</h1>
-        <p className="mt-1 text-xs text-stone-600 sm:text-sm">{recipes.length} recipes grouped by dish type.</p>
+        <p className="mt-1 text-xs text-stone-600 sm:text-sm">{recipes.length} recipes grouped into simple kitchen categories.</p>
       </header>
 
       {error === null ? null : (

@@ -23,7 +23,8 @@ export function Navigation() {
       <nav className="hidden border-b border-stone-200/80 bg-white/90 backdrop-blur sm:block">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-6 py-3 lg:px-8">
           <Link href="/" className="flex items-center gap-3 text-stone-950">
-            <span className="grid h-9 w-9 place-items-center rounded-md bg-brand text-sm font-bold text-white">C</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-mark.svg" alt="" className="h-9 w-9 rounded-md shadow-sm" />
             <span className="text-base font-semibold tracking-tight">Cookagent</span>
           </Link>
           <div className="flex items-center gap-1 rounded-md border border-stone-200 bg-stone-50 p-1">
